@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #080B11;
+    color: #F1F5F9;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0E131F;
+}
+::-webkit-scrollbar-thumb {
+  background: #242F46;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3B82F6;
+}
+
+/* React Flow custom overrides for dark cinematic style */
+.react-flow__background {
+  background-color: #090D16 !important;
+}
+
+.react-flow__edge-path {
+  stroke-linecap: round;
+}
+
+/* Glowing text and borders */
+.glow-cyan {
+  box-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.45);
+}
+.glow-indigo {
+  box-shadow: 0 0 20px -3px rgba(99, 102, 241, 0.45);
+}
+.glow-emerald {
+  box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.45);
+}
+.glow-rose {
+  box-shadow: 0 0 20px -3px rgba(244, 63, 94, 0.45);
+}
+.glow-amber {
+  box-shadow: 0 0 20px -3px rgba(245, 158, 11, 0.45);
+}
+
+/* Isometric 3D tilt mode */
+.isometric-view {
+  transform: perspective(1200px) rotateX(24deg) rotateZ(-6deg) scale(0.92);
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.flat-view {
+  transform: perspective(1200px) rotateX(0deg) rotateZ(0deg) scale(1);
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
