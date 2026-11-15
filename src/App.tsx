@@ -9,6 +9,7 @@ import { StudioInspector } from './components/Studio/StudioInspector';
 import { StudioTimeline } from './components/Studio/StudioTimeline';
 import { ExportModal } from './components/Studio/ExportModal';
 import { ScriptToVideoModal } from './components/Studio/ScriptToVideoModal';
+import { StudioCustomBuilderModal } from './components/Studio/StudioCustomBuilderModal';
 
 export const VisualMotionApp: React.FC = () => {
   return (
@@ -16,19 +17,20 @@ export const VisualMotionApp: React.FC = () => {
       {/* 1. Studio Header */}
       <StudioHeader />
 
-      {/* 2. Main Studio Workstation (Sidebar + Canvas + Floating Inspector) */}
+      {/* 2. Main Studio Workstation (Collapsible Sidebar + Full Canvas + Docked Inspector) */}
       <div className="flex-1 flex overflow-hidden relative">
         <StudioSidebar />
-        <main className="flex-1 h-full relative overflow-hidden flex flex-col">
+        <main className="flex-1 h-full min-w-0 relative overflow-hidden flex flex-col">
           <StudioCanvas />
-          <StudioInspector />
         </main>
+        <StudioInspector />
       </div>
 
       {/* 3. Bottom Multi-Scene Timeline */}
       <StudioTimeline />
 
-      {/* 4. Script-to-Video & Real Video Export Modals */}
+      {/* 4. Custom Block Builder, Script-to-Video & Real Video Export Modals */}
+      <StudioCustomBuilderModal />
       <ScriptToVideoModal />
       <ExportModal />
     </div>

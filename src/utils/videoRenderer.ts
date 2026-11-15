@@ -306,9 +306,12 @@ function drawElement(
   const pulseScale = el.animation === 'pulse' ? 1 + Math.sin(timeSec * 4) * 0.025 : 1;
   const totalScale = (0.86 + 0.14 * eased) * pulseScale;
 
-  const accent = getStatusColor(el.status);
   const isCrashed = el.status === 'crashed';
   const isWarning = el.status === 'warning';
+  const accent =
+    el.type === 'custom-card' && !isCrashed && !isWarning && el.customProps?.accentColor
+      ? String(el.customProps.accentColor)
+      : getStatusColor(el.status);
 
   ctx.save();
   ctx.globalAlpha = eased;
@@ -380,7 +383,10 @@ function drawElement(
   ctx.fillText(titleText, x + pad, y + pad + 6 * scaleFactor);
 
   // Status tag
-  const tagLabel = getStatusLabel(el.status);
+  const tagLabel =
+    el.type === 'custom-card' && !isCrashed && el.customProps?.badgeText
+      ? String(el.customProps.badgeText)
+      : getStatusLabel(el.status);
   ctx.font = `700 ${Math.round(9.5 * scaleFactor)}px "Fira Code", monospace`;
   const tagW = ctx.measureText(tagLabel).width + 12 * scaleFactor;
   const tagH = 18 * scaleFactor;
@@ -753,6 +759,84 @@ function drawElement(
       ctx.fillStyle = col;
       ctx.fillText(String(ln).slice(0, 34), x + pad + 8 * scaleFactor, bodyTop + 13 * scaleFactor + i * 13 * scaleFactor, w - pad * 2 - 16 * scaleFactor);
     });
+  } else if (el.type === 'custom-card') {
+    const cfg = el.customProps || {};
+    const layoutMode: 'gauge' | 'specs' | 'steps' | 'hero' = cfg.layoutMode || 'gauge';
+    const rows: string[] = Array.isArray(cfg.rows) ? cfg.rows : [];
+    const gaugeValue = typeof cfg.gaugeValue === 'number' ? Math.max(0, Math.min(100, cfg.gaugeValue)) : 80;
+    const gaugeLabel = String(cfg.gaugeLabel || 'Load');
+
+    if (layoutMode === 'gauge') {
+      const labelY = bodyTop + bodyH * 0.34;
+      ctx.font = `600 ${Math.round(10 * scaleFactor)}px "Fira Code", monospace`;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#94A3B8';
+      ctx.fillText(gaugeLabel.slice(0, 22), x + pad, labelY);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = accent;
+      ctx.fillText(`${gaugeValue}%`, x + w - pad, labelY);
+
+      const barY = bodyTop + bodyH * 0.56;
+      const barW = w - pad * 2;
+      roundRect(ctx, x + pad, barY, barW, 8 * scaleFactor, 4 * scaleFactor);
+      ctx.fillStyle = '#1E293B';
+      ctx.fill();
+      roundRect(ctx, x + pad, barY, (barW * gaugeValue) / 100, 8 * scaleFactor, 4 * scaleFactor);
+      ctx.fillStyle = accent;
+      ctx.fill();
+    } else if (layoutMode === 'specs') {
+      const displayRows = (rows.length > 0 ? rows : ['Metric: Ready']).slice(0, 3);
+      displayRows.forEach((raw, idx) => {
+        const [k, ...rest] = String(raw).split(':');
+        const v = rest.join(':').trim();
+        const ry = bodyTop + 4 * scaleFactor + idx * 19 * scaleFactor;
+        roundRect(ctx, x + pad, ry, w - pad * 2, 15 * scaleFactor, 4 * scaleFactor);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.fill();
+        ctx.strokeStyle = '#1E293B';
+        ctx.lineWidth = 1 * scaleFactor;
+        ctx.stroke();
+        ctx.font = `600 ${Math.round(8.5 * scaleFactor)}px "Fira Code", monospace`;
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#94A3B8';
+        ctx.fillText(k.trim().slice(0, 18), x + pad + 6 * scaleFactor, ry + 7.5 * scaleFactor);
+        if (v) {
+          ctx.textAlign = 'right';
+          ctx.fillStyle = accent;
+          ctx.fillText(v.slice(0, 16), x + w - pad - 6 * scaleFactor, ry + 7.5 * scaleFactor);
+        }
+      });
+    } else if (layoutMode === 'steps') {
+      const displaySteps = (rows.length > 0 ? rows : ['Step 1: Initialize']).slice(0, 3);
+      displaySteps.forEach((step, idx) => {
+        const sy = bodyTop + 11 * scaleFactor + idx * 18 * scaleFactor;
+        ctx.beginPath();
+        ctx.arc(x + pad + 7 * scaleFactor, sy, 6.5 * scaleFactor, 0, Math.PI * 2);
+        ctx.fillStyle = accent;
+        ctx.fill();
+        ctx.fillStyle = '#020617';
+        ctx.font = `800 ${Math.round(8 * scaleFactor)}px "Fira Code", monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText(String(idx + 1), x + pad + 7 * scaleFactor, sy);
+
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#E2E8F0';
+        ctx.font = `600 ${Math.round(9 * scaleFactor)}px "Fira Code", monospace`;
+        ctx.fillText(String(step).slice(0, 26), x + pad + 18 * scaleFactor, sy);
+      });
+    } else {
+      // hero layout
+      const heroVal = String(rows[0] || el.customProps?.badgeText || '99.9%');
+      ctx.textAlign = 'center';
+      ctx.fillStyle = accent;
+      ctx.font = `800 ${Math.round(20 * scaleFactor)}px "Space Grotesk", sans-serif`;
+      ctx.fillText(heroVal.slice(0, 18), 0, bodyTop + bodyH * 0.42);
+      if (rows[1]) {
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = `500 ${Math.round(9.5 * scaleFactor)}px "Fira Code", monospace`;
+        ctx.fillText(String(rows[1]).slice(0, 32), 0, bodyTop + bodyH * 0.75);
+      }
+    }
   } else {
     // Clean stylized formula / story / generic center visual
     ctx.textAlign = 'center';

@@ -9,6 +9,7 @@ import {
   BackgroundTheme,
   SceneTransition,
   SceneHeadline,
+  CustomBlockPreset,
 } from '../types/videoStudio';
 import { IAM_ECOSYSTEM_PROJECT, ALL_TEMPLATES } from '../data/studioTemplates';
 import { generateStudioProjectFromScript, VideoStylePreset } from '../utils/studioGenerator';
@@ -25,10 +26,21 @@ interface StudioContextType {
   playbackProgress: number; // 0 to 1 for current scene
   isExportModalOpen: boolean;
   isScriptModalOpen: boolean;
+  isCustomBuilderOpen: boolean;
+  isSidebarOpen: boolean;
+  snapToGrid: boolean;
+  isConnectMode: boolean;
+  connectFromId: string | null;
+  savedCustomBlocks: CustomBlockPreset[];
 
-  // Project & Modals
+  // Project, Workspace & Modals
   setIsExportModalOpen: (open: boolean) => void;
   setIsScriptModalOpen: (open: boolean) => void;
+  setIsCustomBuilderOpen: (open: boolean) => void;
+  setIsSidebarOpen: (open: boolean) => void;
+  setSnapToGrid: (snap: boolean) => void;
+  setIsConnectMode: (active: boolean) => void;
+  setConnectFromId: (id: string | null) => void;
   updateProjectTitle: (title: string) => void;
   setAspectRatio: (ratio: '16:9' | '9:16') => void;
   toggleVoiceEnabled: () => void;
@@ -53,8 +65,11 @@ interface StudioContextType {
   createBlankProject: () => void;
   importProjectJson: (jsonText: string) => boolean;
 
-  // Element Actions
+  // Element & Custom Block Actions
   addElement: (type: ElementType) => void;
+  addCustomElement: (preset: Omit<CustomBlockPreset, 'id'> & { x?: number; y?: number; entranceBeat?: number }) => void;
+  saveCustomBlock: (preset: Omit<CustomBlockPreset, 'id'>) => void;
+  deleteCustomBlock: (id: string) => void;
   updateElement: (id: string, updates: Partial<StudioElement>) => void;
   removeElement: (id: string) => void;
   setElementStatus: (id: string, status: ElementStatus) => void;
@@ -98,7 +113,29 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [playbackProgress, setPlaybackProgress] = useState<number>(0);
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isScriptModalOpen, setIsScriptModalOpen] = useState<boolean>(false);
+  const [isCustomBuilderOpen, setIsCustomBuilderOpen] = useState<boolean>(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [snapToGrid, setSnapToGrid] = useState<boolean>(true);
+  const [isConnectMode, setIsConnectMode] = useState<boolean>(false);
+  const [connectFromId, setConnectFromId] = useState<string | null>(null);
   const [isScrubbing, setIsScrubbing] = useState<boolean>(false);
+  const [savedCustomBlocks, setSavedCustomBlocks] = useState<CustomBlockPreset[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = window.localStorage.getItem('archmotion_custom_blocks_v1');
+      return raw ? (JSON.parse(raw) as CustomBlockPreset[]) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('archmotion_custom_blocks_v1', JSON.stringify(savedCustomBlocks));
+    } catch {
+      // Ignore storage quota errors
+    }
+  }, [savedCustomBlocks]);
 
   const activeScene = project.scenes[activeSceneIndex] || project.scenes[0];
   const timerRef = useRef<number | null>(null);
@@ -389,6 +426,18 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       status: 'normal',
       animation: 'none',
       entranceBeat: 0,
+      customProps:
+        type === 'custom-card'
+          ? {
+              icon: 'Sparkles',
+              accentColor: '#38BDF8',
+              badgeText: 'CUSTOM',
+              layoutMode: 'gauge',
+              gaugeValue: 82,
+              gaugeLabel: 'Throughput',
+              rows: ['Region: global-edge', 'Latency: 4.2ms'],
+            }
+          : undefined,
     };
 
     setProject((prev) => {
@@ -402,6 +451,47 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     setActiveElementId(newEl.id);
     sfx.playKeyboardType();
+  };
+
+  const addCustomElement = (preset: Omit<CustomBlockPreset, 'id'> & { x?: number; y?: number; entranceBeat?: number }) => {
+    const newEl: StudioElement = {
+      id: `el-custom-${Date.now()}`,
+      type: 'custom-card',
+      title: preset.title,
+      subtitle: preset.subtitle,
+      x: preset.x ?? Math.round(34 + Math.random() * 32),
+      y: preset.y ?? Math.round(38 + Math.random() * 26),
+      width: preset.width || 235,
+      height: preset.height || 150,
+      status: preset.status || 'active',
+      animation: preset.animation || 'none',
+      entranceBeat: preset.entranceBeat ?? 0,
+      customProps: { ...preset.customProps },
+    };
+
+    setProject((prev) => {
+      const updatedScenes = [...prev.scenes];
+      updatedScenes[activeSceneIndex] = {
+        ...updatedScenes[activeSceneIndex],
+        elements: [...updatedScenes[activeSceneIndex].elements, newEl],
+      };
+      return { ...prev, scenes: updatedScenes };
+    });
+
+    setActiveElementId(newEl.id);
+    sfx.playSuccess();
+  };
+
+  const saveCustomBlock = (preset: Omit<CustomBlockPreset, 'id'>) => {
+    const entry: CustomBlockPreset = {
+      ...preset,
+      id: `cb-${Date.now()}`,
+    };
+    setSavedCustomBlocks((prev) => [entry, ...prev].slice(0, 24));
+  };
+
+  const deleteCustomBlock = (id: string) => {
+    setSavedCustomBlocks((prev) => prev.filter((b) => b.id !== id));
   };
 
   const updateElement = (id: string, updates: Partial<StudioElement>) => {
@@ -674,8 +764,19 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         playbackProgress,
         isExportModalOpen,
         isScriptModalOpen,
+        isCustomBuilderOpen,
+        isSidebarOpen,
+        snapToGrid,
+        isConnectMode,
+        connectFromId,
+        savedCustomBlocks,
         setIsExportModalOpen,
         setIsScriptModalOpen,
+        setIsCustomBuilderOpen,
+        setIsSidebarOpen,
+        setSnapToGrid,
+        setIsConnectMode,
+        setConnectFromId,
         updateProjectTitle,
         setAspectRatio,
         toggleVoiceEnabled,
@@ -694,6 +795,9 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         createBlankProject,
         importProjectJson,
         addElement,
+        addCustomElement,
+        saveCustomBlock,
+        deleteCustomBlock,
         updateElement,
         removeElement,
         setElementStatus,

@@ -33,11 +33,45 @@ import {
   BadgeCheck,
   UserCheck,
   FileSearch,
+  Server,
+  Database,
+  Cpu,
+  Brain,
+  Rocket,
+  Zap,
+  Terminal,
+  Code2,
+  Layers,
+  Globe,
+  Activity,
+  Box,
+  Workflow,
+  Sparkles,
 } from 'lucide-react';
+
+const CUSTOM_ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  Sparkles,
+  Server,
+  Database,
+  Cpu,
+  Brain,
+  Rocket,
+  Zap,
+  ShieldCheck,
+  Terminal,
+  Code2,
+  Layers,
+  Lock,
+  Globe,
+  Activity,
+  Box,
+  Workflow,
+};
 
 interface ElementRendererProps {
   element: StudioElement;
   isSelected: boolean;
+  isConnectSource?: boolean;
   onSelect: () => void;
   onDragStart?: (e: React.PointerEvent<HTMLDivElement>) => void;
   playbackProgress?: number;
@@ -47,6 +81,7 @@ interface ElementRendererProps {
 export const ElementRenderer: React.FC<ElementRendererProps> = ({
   element,
   isSelected,
+  isConnectSource = false,
   onSelect,
   onDragStart,
   playbackProgress = 1,
@@ -446,6 +481,124 @@ export const ElementRenderer: React.FC<ElementRendererProps> = ({
             {subtitle && <div className="text-xs text-indigo-300 mt-1.5">{subtitle}</div>}
           </div>
         );
+      case 'custom-card': {
+        const cfg = customProps || {};
+        const accentColor: string = isCrashed ? '#EF4444' : isWarning ? '#F59E0B' : cfg.accentColor || '#38BDF8';
+        const layoutMode: 'gauge' | 'specs' | 'steps' | 'hero' = cfg.layoutMode || 'gauge';
+        const badgeText: string = isCrashed ? 'CRASHED' : cfg.badgeText || '';
+        const gaugeValue: number = typeof cfg.gaugeValue === 'number' ? cfg.gaugeValue : 80;
+        const gaugeLabel: string = cfg.gaugeLabel || 'Load';
+        const rows: string[] = Array.isArray(cfg.rows) ? cfg.rows : [];
+        const IconComp = CUSTOM_ICON_MAP[cfg.icon || 'Sparkles'] || Sparkles;
+
+        return (
+          <div
+            className="w-full h-full p-3.5 rounded-2xl bg-slate-950/95 border flex flex-col justify-between shadow-2xl"
+            style={{
+              borderColor: `${accentColor}B0`,
+              boxShadow: `0 0 22px -4px ${accentColor}45`,
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div
+                  className="w-6 h-6 rounded-lg flex items-center justify-center border shrink-0"
+                  style={{ backgroundColor: `${accentColor}22`, borderColor: `${accentColor}55` }}
+                >
+                  <IconComp className="w-3.5 h-3.5" style={{ color: accentColor }} />
+                </div>
+                <span className="text-[11px] font-mono font-bold text-white truncate">{title || 'Custom Block'}</span>
+              </div>
+              {badgeText && (
+                <span
+                  className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border shrink-0"
+                  style={{
+                    color: accentColor,
+                    backgroundColor: `${accentColor}1E`,
+                    borderColor: `${accentColor}55`,
+                  }}
+                >
+                  {badgeText}
+                </span>
+              )}
+            </div>
+
+            <div className="my-1 flex-1 flex flex-col justify-center">
+              {layoutMode === 'gauge' && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] font-mono tabular-nums">
+                    <span className="text-slate-400 truncate">{gaugeLabel}</span>
+                    <span className="font-bold" style={{ color: accentColor }}>
+                      {gaugeValue}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{ width: `${Math.max(0, Math.min(100, gaugeValue))}%`, backgroundColor: accentColor }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {layoutMode === 'specs' && (
+                <div className="space-y-1">
+                  {(rows.length > 0 ? rows.slice(0, 3) : ['Metric: Ready']).map((row, idx) => {
+                    const [k, ...rest] = String(row).split(':');
+                    const val = rest.join(':').trim();
+                    return (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[9px] font-mono"
+                      >
+                        <span className="text-slate-400 truncate">{k}</span>
+                        {val && (
+                          <span className="font-bold shrink-0 ml-2" style={{ color: accentColor }}>
+                            {val}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {layoutMode === 'steps' && (
+                <div className="space-y-1">
+                  {(rows.length > 0 ? rows.slice(0, 3) : ['Step 1: Initialize']).map((step, idx) => (
+                    <div key={idx} className="flex items-center gap-1.5 text-[9px] font-mono text-slate-200">
+                      <span
+                        className="w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center shrink-0 text-slate-950"
+                        style={{ backgroundColor: accentColor }}
+                      >
+                        {idx + 1}
+                      </span>
+                      <span className="truncate">{step}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {layoutMode === 'hero' && (
+                <div className="text-center">
+                  <div className="text-lg font-black tracking-tight tabular-nums" style={{ color: accentColor }}>
+                    {rows[0] || badgeText || '99.9%'}
+                  </div>
+                  {rows[1] && (
+                    <div className="text-[9.5px] font-mono text-slate-400 mt-0.5 truncate">{rows[1]}</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {subtitle && (
+              <div className="text-[9px] font-mono text-slate-400 border-t border-slate-800 pt-1 text-center truncate">
+                {subtitle}
+              </div>
+            )}
+          </div>
+        );
+      }
       default:
         return (
           <div className="w-full h-full p-3 rounded-2xl bg-slate-900 border border-slate-700 flex flex-col justify-center items-center">
@@ -468,7 +621,11 @@ export const ElementRenderer: React.FC<ElementRendererProps> = ({
         onSelect();
       }}
       className={`absolute cursor-grab active:cursor-grabbing transition-shadow duration-200 ${animClass} ${
-        isSelected ? 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-950' : ''
+        isConnectSource
+          ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-slate-950'
+          : isSelected
+          ? 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-950'
+          : ''
       }`}
       style={{
         left: `${element.x}%`,

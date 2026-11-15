@@ -2,7 +2,18 @@ import React, { useRef, useState } from 'react';
 import { useVideoStudio } from '../../store/videoStudioStore';
 import { PipeLayer } from '../Graphics/PipeLayer';
 import { ElementRenderer } from '../Graphics/ElementRenderer';
-import { Activity, Cpu, Clock } from 'lucide-react';
+import {
+  Activity,
+  Cpu,
+  Clock,
+  PanelLeftOpen,
+  PanelLeftClose,
+  Plus,
+  Zap,
+  Grid,
+  Maximize2,
+  Minimize2,
+} from 'lucide-react';
 
 export const StudioCanvas: React.FC = () => {
   const {
@@ -11,18 +22,29 @@ export const StudioCanvas: React.FC = () => {
     activeElementId,
     setActiveElementId,
     updateElement,
+    addPipe,
     currentSpokenWord,
     playbackProgress,
     isPlaying,
     isScrubbing,
     setIsScrubbing,
     scrubSceneProgress,
+    isSidebarOpen,
+    setIsSidebarOpen,
+    setIsCustomBuilderOpen,
+    snapToGrid,
+    setSnapToGrid,
+    isConnectMode,
+    setIsConnectMode,
+    connectFromId,
+    setConnectFromId,
   } = useVideoStudio();
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const { camera, hud, background, elements, pipes, headline } = activeScene;
   const isAnimating = isPlaying || isScrubbing;
+  const isStageExpanded = !isSidebarOpen && !activeElementId;
 
   const isShake = camera.focus === 'shake';
   const endZoom = camera.zoom || 1.0;
@@ -52,6 +74,7 @@ export const StudioCanvas: React.FC = () => {
   const isVertical = project.aspectRatio === '9:16';
 
   const handleElementDragStart = (elementId: string, startX: number, startY: number, e: React.PointerEvent<HTMLDivElement>) => {
+    if (isConnectMode) return;
     const container = canvasRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
@@ -62,8 +85,12 @@ export const StudioCanvas: React.FC = () => {
     const onPointerMove = (moveEvent: PointerEvent) => {
       const dxPct = (((moveEvent.clientX - originClientX) / rect.width) * 100) / zoomScale;
       const dyPct = (((moveEvent.clientY - originClientY) / rect.height) * 100) / zoomScale;
-      const nextX = Math.max(8, Math.min(92, startX + dxPct));
-      const nextY = Math.max(14, Math.min(86, startY + dyPct));
+      let nextX = Math.max(8, Math.min(92, startX + dxPct));
+      let nextY = Math.max(14, Math.min(86, startY + dyPct));
+      if (snapToGrid) {
+        nextX = Math.round(nextX / 2) * 2;
+        nextY = Math.round(nextY / 2) * 2;
+      }
       updateElement(elementId, { x: nextX, y: nextY });
     };
 
@@ -76,6 +103,25 @@ export const StudioCanvas: React.FC = () => {
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
   };
+
+  const handleElementSelect = (elementId: string) => {
+    if (isConnectMode) {
+      if (!connectFromId) {
+        setConnectFromId(elementId);
+        return;
+      }
+      if (connectFromId !== elementId) {
+        addPipe(connectFromId, elementId);
+        setConnectFromId(null);
+        setIsConnectMode(false);
+        setActiveElementId(elementId);
+      }
+      return;
+    }
+    setActiveElementId(elementId);
+  };
+
+  const connectSourceEl = connectFromId ? elements.find((el) => el.id === connectFromId) : null;
 
   // Subtitle word sync: prefer live TTS boundary word, fallback to smooth progress index when playing
   const words = activeScene.narration ? activeScene.narration.trim().split(/\s+/) : [];
@@ -95,17 +141,104 @@ export const StudioCanvas: React.FC = () => {
   const headlineOpacity = isAnimating ? Math.min(1, playbackProgress / 0.16) : 1;
 
   return (
-    <div
-      onClick={() => setActiveElementId(null)}
-      className="w-full h-full flex items-center justify-center p-5 overflow-hidden bg-[#05070B] select-none"
-    >
-      {/* 16:9 or 9:16 Studio Frame Container */}
+    <div className="w-full h-full flex flex-col overflow-hidden bg-[#05070B] select-none">
+      {/* Canvas Workspace Bar */}
+      <div className="h-10 px-3 border-b border-slate-800/70 bg-[#080C15] flex items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+              isSidebarOpen
+                ? 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
+                : 'bg-indigo-600/20 border-indigo-500/50 text-indigo-200 hover:bg-indigo-600/30'
+            }`}
+          >
+            {isSidebarOpen ? <PanelLeftClose className="w-3.5 h-3.5" /> : <PanelLeftOpen className="w-3.5 h-3.5" />}
+            <span>{isSidebarOpen ? 'Hide Assets' : 'Assets & FX'}</span>
+          </button>
+
+          <button
+            onClick={() => setIsCustomBuilderOpen(true)}
+            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 flex items-center gap-1 transition-colors whitespace-nowrap"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Custom Block</span>
+          </button>
+
+          <button
+            onClick={() => {
+              const next = !isConnectMode;
+              setIsConnectMode(next);
+              if (!next) setConnectFromId(null);
+            }}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+              isConnectMode
+                ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-bold'
+                : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>
+              {isConnectMode
+                ? connectSourceEl
+                  ? `From "${connectSourceEl.title}" ➔ Click Target`
+                  : 'Click Source Node...'
+                : 'Connect Pipe'}
+            </span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => setSnapToGrid(!snapToGrid)}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-mono border flex items-center gap-1 transition-colors whitespace-nowrap ${
+              snapToGrid
+                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+            }`}
+            title="Snap dragged elements to 2% grid"
+          >
+            <Grid className="w-3 h-3" />
+            <span>Snap {snapToGrid ? 'On' : 'Off'}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (isStageExpanded) {
+                setIsSidebarOpen(true);
+              } else {
+                setIsSidebarOpen(false);
+                setActiveElementId(null);
+              }
+            }}
+            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-colors whitespace-nowrap"
+            title={isStageExpanded ? 'Restore workspace panels' : 'Expand stage for full editing room'}
+          >
+            {isStageExpanded ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+            <span>{isStageExpanded ? 'Restore Panels' : 'Expand Stage'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Stage Area */}
       <div
-        ref={canvasRef}
-        className={`relative rounded-2xl overflow-hidden shadow-2xl border border-slate-800 ${bgGradient} transition-all duration-500 ${
-          isVertical ? 'h-full max-h-full aspect-[9/16]' : 'w-full max-w-5xl aspect-video'
-        } ${isShake && isPlaying ? 'animate-wiggle border-red-500/80 shadow-[0_0_50px_rgba(239,68,68,0.3)]' : ''}`}
+        onClick={() => {
+          if (isConnectMode) {
+            setConnectFromId(null);
+            setIsConnectMode(false);
+          } else {
+            setActiveElementId(null);
+          }
+        }}
+        className="flex-1 flex items-center justify-center p-3 overflow-hidden"
       >
+        {/* 16:9 or 9:16 Studio Frame Container */}
+        <div
+          ref={canvasRef}
+          className={`relative rounded-2xl overflow-hidden shadow-2xl border border-slate-800 ${bgGradient} transition-all duration-300 ${
+            isVertical ? 'h-full max-h-full aspect-[9/16]' : 'w-full max-w-6xl aspect-video'
+          } ${isShake && isPlaying ? 'animate-wiggle border-red-500/80 shadow-[0_0_50px_rgba(239,68,68,0.3)]' : ''}`}
+        >
         {/* Background Grid */}
         {background.grid && (
           <div
@@ -214,7 +347,8 @@ export const StudioCanvas: React.FC = () => {
               key={el.id}
               element={el}
               isSelected={el.id === activeElementId}
-              onSelect={() => setActiveElementId(el.id)}
+              isConnectSource={isConnectMode && el.id === connectFromId}
+              onSelect={() => handleElementSelect(el.id)}
               onDragStart={(e) => handleElementDragStart(el.id, el.x, el.y, e)}
               playbackProgress={playbackProgress}
               isPlaying={isAnimating}
@@ -285,6 +419,7 @@ export const StudioCanvas: React.FC = () => {
             className="h-1 group-hover:h-2 bg-gradient-to-r from-cyan-400 to-indigo-500 transition-all duration-75"
             style={{ width: `${playbackProgress * 100}%` }}
           />
+        </div>
         </div>
       </div>
     </div>

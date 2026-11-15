@@ -33,9 +33,11 @@ const ELEMENT_TYPE_OPTIONS: Array<{ value: ElementType; label: string }> = [
   { value: 'metric-badge', label: 'Metric Stat Badge' },
   { value: 'callout-card', label: 'Callout Card' },
   { value: 'kinetic-title', label: 'Kinetic Title Card' },
+  { value: 'custom-card', label: 'Custom Block' },
 ];
 
 const PIPE_COLOR_SWATCHES = ['#06B6D4', '#10B981', '#818CF8', '#F59E0B', '#EF4444'];
+const CUSTOM_ACCENT_SWATCHES = ['#06B6D4', '#6366F1', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#F8FAFC'];
 
 export const StudioInspector: React.FC = () => {
   const {
@@ -64,8 +66,11 @@ export const StudioInspector: React.FC = () => {
     ? element.customProps.lines
     : ['> step_1: init()', '> status: READY'];
 
+  const customCfg = element.customProps || {};
+  const customRows: string[] = Array.isArray(customCfg.rows) ? customCfg.rows : [];
+
   return (
-    <div className="absolute right-5 top-5 w-80 max-h-[calc(100%-2.5rem)] overflow-y-auto rounded-2xl bg-slate-900/95 border border-slate-700 shadow-2xl p-4 backdrop-blur-xl z-40 select-none">
+    <aside className="w-72 h-full bg-[#090D16] border-l border-slate-800/80 overflow-y-auto p-4 shrink-0 select-none z-20">
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-800">
         <div className="flex items-center gap-1.5">
@@ -140,6 +145,111 @@ export const StudioInspector: React.FC = () => {
               }
               className="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-[11px] text-emerald-300 font-mono focus:outline-none focus:border-indigo-500 resize-none"
             />
+          </div>
+        )}
+
+        {element.type === 'custom-card' && (
+          <div className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2.5">
+            <div className="text-[10px] font-mono text-cyan-400 font-bold">CUSTOM BLOCK DESIGN</div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <div>
+                <label className="text-[9px] font-mono text-slate-400 block mb-1">LAYOUT</label>
+                <select
+                  value={customCfg.layoutMode || 'gauge'}
+                  onChange={(e) =>
+                    updateElement(element.id, {
+                      customProps: { ...customCfg, layoutMode: e.target.value },
+                    })
+                  }
+                  className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-mono text-slate-200 focus:outline-none"
+                >
+                  <option value="gauge">Gauge</option>
+                  <option value="specs">Specs</option>
+                  <option value="steps">Steps</option>
+                  <option value="hero">Hero</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[9px] font-mono text-slate-400 block mb-1">TAG BADGE</label>
+                <input
+                  type="text"
+                  value={customCfg.badgeText || ''}
+                  onChange={(e) =>
+                    updateElement(element.id, {
+                      customProps: { ...customCfg, badgeText: e.target.value },
+                    })
+                  }
+                  className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-mono text-white focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-mono text-slate-400">ACCENT</span>
+              <div className="flex items-center gap-1.5">
+                {CUSTOM_ACCENT_SWATCHES.map((hex) => (
+                  <button
+                    key={hex}
+                    onClick={() =>
+                      updateElement(element.id, {
+                        customProps: { ...customCfg, accentColor: hex },
+                      })
+                    }
+                    aria-label={`Set block accent ${hex}`}
+                    className={`w-3.5 h-3.5 rounded-full border ${
+                      (customCfg.accentColor || '#38BDF8') === hex ? 'border-white scale-110' : 'border-slate-700'
+                    }`}
+                    style={{ backgroundColor: hex }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {(customCfg.layoutMode || 'gauge') === 'gauge' ? (
+              <div className="space-y-1.5 tabular-nums">
+                <div className="flex justify-between text-[9px] font-mono text-slate-400">
+                  <span>GAUGE VALUE</span>
+                  <span className="text-cyan-300 font-bold">{customCfg.gaugeValue ?? 80}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={customCfg.gaugeValue ?? 80}
+                  onChange={(e) =>
+                    updateElement(element.id, {
+                      customProps: { ...customCfg, gaugeValue: Number(e.target.value) },
+                    })
+                  }
+                  className="w-full accent-cyan-400 cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={customCfg.gaugeLabel || ''}
+                  placeholder="Gauge label..."
+                  onChange={(e) =>
+                    updateElement(element.id, {
+                      customProps: { ...customCfg, gaugeLabel: e.target.value },
+                    })
+                  }
+                  className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-mono text-slate-200 focus:outline-none"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="text-[9px] font-mono text-slate-400 block mb-1">ROWS / STEPS (1 PER LINE)</label>
+                <textarea
+                  rows={3}
+                  value={customRows.join('\n')}
+                  onChange={(e) =>
+                    updateElement(element.id, {
+                      customProps: { ...customCfg, rows: e.target.value.split('\n').slice(0, 4) },
+                    })
+                  }
+                  className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-mono text-slate-200 focus:outline-none resize-none"
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -394,6 +504,6 @@ export const StudioInspector: React.FC = () => {
           <span>Remove Element</span>
         </button>
       </div>
-    </div>
+    </aside>
   );
 };

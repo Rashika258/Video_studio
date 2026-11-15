@@ -31,9 +31,31 @@ export type ElementType =
   | 'auth-token'
   | 'access-policy'
   | 'siem-audit'
-  // Annotations
+  // Annotations & Custom Blocks
   | 'callout-card'
-  | 'metric-badge';
+  | 'metric-badge'
+  | 'custom-card';
+
+export interface CustomBlockConfig {
+  icon: string;
+  accentColor: string;
+  badgeText?: string;
+  layoutMode: 'gauge' | 'specs' | 'steps' | 'hero';
+  gaugeValue?: number;
+  gaugeLabel?: string;
+  rows?: string[];
+}
+
+export interface CustomBlockPreset {
+  id: string;
+  title: string;
+  subtitle?: string;
+  width: number;
+  height: number;
+  status: ElementStatus;
+  animation?: StudioElement['animation'];
+  customProps: CustomBlockConfig;
+}
 
 export type ElementStatus = 'normal' | 'active' | 'warning' | 'crashed' | 'highlight';
 
