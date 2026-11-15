@@ -37,6 +37,7 @@ import {
   PanelLeftClose,
   Trash2,
   Bookmark,
+  ImagePlus,
 } from 'lucide-react';
 import { voiceover } from '../../utils/voiceover';
 
@@ -47,6 +48,7 @@ export const StudioSidebar: React.FC = () => {
     isSidebarOpen,
     setIsSidebarOpen,
     setIsCustomBuilderOpen,
+    setIsImageAnimatorOpen,
     savedCustomBlocks,
     addElement,
     addCustomElement,
@@ -124,15 +126,24 @@ export const StudioSidebar: React.FC = () => {
         {/* TAB 1: ASSET PALETTE */}
         {activeTab === 'components' && (
           <div className="space-y-4">
-            {/* Custom Builder & Saved Custom Blocks */}
+            {/* Custom Builder, Image Animator & Saved Custom Blocks */}
             <div className="space-y-2">
-              <button
-                onClick={() => setIsCustomBuilderOpen(true)}
-                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-600/30 to-cyan-600/25 hover:from-indigo-600/45 hover:to-cyan-600/40 border border-indigo-500/50 text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors whitespace-nowrap"
-              >
-                <Sparkles className="w-4 h-4 text-cyan-300" />
-                <span>+ Build Custom Block</span>
-              </button>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => setIsCustomBuilderOpen(true)}
+                  className="py-2 px-2.5 rounded-xl bg-gradient-to-r from-indigo-600/30 to-cyan-600/25 hover:from-indigo-600/45 hover:to-cyan-600/40 border border-indigo-500/50 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
+                  <span>Custom Block</span>
+                </button>
+                <button
+                  onClick={() => setIsImageAnimatorOpen(true)}
+                  className="py-2 px-2.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-200 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap"
+                >
+                  <ImagePlus className="w-3.5 h-3.5 text-cyan-300" />
+                  <span>Images ➔ Video</span>
+                </button>
+              </div>
 
               {savedCustomBlocks.length > 0 && (
                 <div className="pt-1">
@@ -286,6 +297,8 @@ export const StudioSidebar: React.FC = () => {
                   { type: 'math-formula' as ElementType, label: 'Math Formula', icon: <Sigma className="w-4 h-4 text-indigo-300" /> },
                   { type: 'metric-badge' as ElementType, label: 'Metric Stat', icon: <TrendingUp className="w-4 h-4 text-emerald-400" /> },
                   { type: 'callout-card' as ElementType, label: 'Callout Card', icon: <Plus className="w-4 h-4 text-amber-400" /> },
+                  { type: 'image-frame' as ElementType, label: 'Image Frame', icon: <ImagePlus className="w-4 h-4 text-cyan-400" /> },
+                  { type: 'custom-card' as ElementType, label: 'Custom Card', icon: <Sparkles className="w-4 h-4 text-indigo-400" /> },
                 ].map((item) => (
                   <button
                     key={item.type}

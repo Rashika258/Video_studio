@@ -13,6 +13,7 @@ import {
   Grid,
   Maximize2,
   Minimize2,
+  ImagePlus,
 } from 'lucide-react';
 
 export const StudioCanvas: React.FC = () => {
@@ -22,6 +23,7 @@ export const StudioCanvas: React.FC = () => {
     activeElementId,
     setActiveElementId,
     updateElement,
+    addImageElement,
     addPipe,
     currentSpokenWord,
     playbackProgress,
@@ -32,6 +34,7 @@ export const StudioCanvas: React.FC = () => {
     isSidebarOpen,
     setIsSidebarOpen,
     setIsCustomBuilderOpen,
+    setIsImageAnimatorOpen,
     snapToGrid,
     setSnapToGrid,
     isConnectMode,
@@ -159,10 +162,18 @@ export const StudioCanvas: React.FC = () => {
 
           <button
             onClick={() => setIsCustomBuilderOpen(true)}
-            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 flex items-center gap-1 transition-colors whitespace-nowrap"
+            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/40 text-indigo-300 flex items-center gap-1 transition-colors whitespace-nowrap"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Custom Block</span>
+          </button>
+
+          <button
+            onClick={() => setIsImageAnimatorOpen(true)}
+            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 flex items-center gap-1 transition-colors whitespace-nowrap"
+          >
+            <ImagePlus className="w-3.5 h-3.5" />
+            <span>Animate Images</span>
           </button>
 
           <button
@@ -220,8 +231,33 @@ export const StudioCanvas: React.FC = () => {
         </div>
       </div>
 
-      {/* Stage Area */}
+      {/* Stage Area (supports direct image drop) */}
       <div
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          const files = Array.from(e.dataTransfer.files || []).filter((f) => f.type.startsWith('image/'));
+          if (files.length === 0) return;
+          const rect = canvasRef.current?.getBoundingClientRect();
+          const dropX = rect ? Math.max(12, Math.min(88, ((e.clientX - rect.left) / rect.width) * 100)) : 50;
+          const dropY = rect ? Math.max(16, Math.min(84, ((e.clientY - rect.top) / rect.height) * 100)) : 52;
+          files.forEach((file, idx) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const src = String(reader.result || '');
+              if (!src) return;
+              addImageElement({
+                src,
+                title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' '),
+                x: Math.min(88, dropX + idx * 4),
+                y: Math.min(84, dropY + idx * 4),
+                motionEffect: 'ken-burns-in',
+                frameStyle: 'glass-card',
+              });
+            };
+            reader.readAsDataURL(file);
+          });
+        }}
         onClick={() => {
           if (isConnectMode) {
             setConnectFromId(null);

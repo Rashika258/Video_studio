@@ -275,6 +275,95 @@ function drawPipe(
   ctx.restore();
 }
 
+async function preloadProjectImages(project: StudioProject): Promise<Map<string, HTMLImageElement>> {
+  const map = new Map<string, HTMLImageElement>();
+  const srcs = new Set<string>();
+  project.scenes.forEach((s) => {
+    s.elements.forEach((el) => {
+      if (el.type === 'image-frame' && el.customProps?.src) {
+        srcs.add(String(el.customProps.src));
+      }
+    });
+  });
+
+  await Promise.all(
+    Array.from(srcs).map(
+      (src) =>
+        new Promise<void>((resolve) => {
+          const img = new Image();
+          if (!src.startsWith('data:') && !src.startsWith('blob:')) {
+            img.crossOrigin = 'anonymous';
+          }
+          img.onload = () => {
+            map.set(src, img);
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = src;
+        })
+    )
+  );
+  return map;
+}
+
+function drawFittedImage(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  bx: number,
+  by: number,
+  bw: number,
+  bh: number,
+  fitMode: 'cover' | 'contain',
+  motionEffect: string,
+  intensity: number,
+  sceneProgress: number
+) {
+  const iw = img.naturalWidth || img.width || bw;
+  const ih = img.naturalHeight || img.height || bh;
+  const baseScale =
+    fitMode === 'contain' ? Math.min(bw / iw, bh / ih) : Math.max(bw / iw, bh / ih);
+
+  const t = sceneProgress;
+  let extraScale = 1;
+  let tx = 0;
+  let ty = 0;
+  let rot = 0;
+  let wipeFrac = 1;
+
+  if (motionEffect === 'ken-burns-in') {
+    extraScale = 1 + 0.16 * intensity * t;
+  } else if (motionEffect === 'ken-burns-out') {
+    extraScale = 1 + 0.16 * intensity * (1 - t);
+  } else if (motionEffect === 'pan-left') {
+    extraScale = 1.16 * Math.max(1, intensity * 0.92);
+    tx = bw * 0.05 * intensity * (1 - 2 * t);
+  } else if (motionEffect === 'pan-right') {
+    extraScale = 1.16 * Math.max(1, intensity * 0.92);
+    tx = -bw * 0.05 * intensity * (1 - 2 * t);
+  } else if (motionEffect === 'float-3d') {
+    extraScale = 1.05;
+    ty = Math.sin(t * Math.PI * 2) * bh * 0.025 * intensity;
+    rot = (Math.sin(t * Math.PI * 2) * 1.2 * intensity * Math.PI) / 180;
+  } else if (motionEffect === 'reveal-wipe') {
+    wipeFrac = Math.max(0.02, Math.min(1, t / 0.35));
+    extraScale = 1 + 0.06 * t;
+  } else if (motionEffect === 'pulse-beat') {
+    extraScale = 1 + Math.abs(Math.sin(t * Math.PI * 4)) * 0.07 * intensity;
+  }
+
+  ctx.save();
+  if (wipeFrac < 1) {
+    ctx.beginPath();
+    ctx.rect(bx, by, bw * wipeFrac, bh);
+    ctx.clip();
+  }
+  ctx.translate(bx + bw / 2 + tx, by + bh / 2 + ty);
+  if (rot !== 0) ctx.rotate(rot);
+  ctx.scale(baseScale * extraScale, baseScale * extraScale);
+  ctx.drawImage(img, -iw / 2, -ih / 2, iw, ih);
+  ctx.restore();
+}
+
 function drawElement(
   ctx: CanvasRenderingContext2D,
   el: StudioElement,
@@ -282,7 +371,8 @@ function drawElement(
   height: number,
   sceneProgress: number,
   timeSec: number,
-  scaleFactor: number
+  scaleFactor: number,
+  imageMap: Map<string, HTMLImageElement>
 ) {
   const beatStart = Math.max(0, Math.min(0.8, el.entranceBeat ?? 0));
   const beatProg = Math.max(0, Math.min(1, (sceneProgress - beatStart) / 0.16));
@@ -344,6 +434,103 @@ function drawElement(
       ctx.fillStyle = '#67E8F9';
       ctx.fillText(el.subtitle, 0, 18 * scaleFactor, w - 24 * scaleFactor);
     }
+    ctx.restore();
+    return;
+  }
+
+  // Animated Image Frame layout
+  if (el.type === 'image-frame') {
+    const cfg = el.customProps || {};
+    const src = String(cfg.src || '');
+    const img = src ? imageMap.get(src) : undefined;
+    const motionEffect = String(cfg.motionEffect || 'ken-burns-in');
+    const frameStyle = String(cfg.frameStyle || 'glass-card');
+    const fitMode: 'cover' | 'contain' = cfg.fitMode === 'contain' ? 'contain' : 'cover';
+    const intensity = typeof cfg.intensity === 'number' ? cfg.intensity : 1.0;
+    const imgAccent = isCrashed ? '#EF4444' : isWarning ? '#F59E0B' : String(cfg.accentColor || '#38BDF8');
+
+    const padFrame = frameStyle === 'full-bleed' || frameStyle === 'minimal' || frameStyle === 'browser' ? 0 : 8 * scaleFactor;
+    const headerH = frameStyle === 'browser' ? 24 * scaleFactor : 0;
+    const footerH = frameStyle === 'polaroid' ? 24 * scaleFactor : frameStyle === 'glass-card' && (el.title || el.subtitle) ? 24 * scaleFactor : 0;
+
+    roundRect(ctx, x, y, w, h, (frameStyle === 'full-bleed' ? 10 : 14) * scaleFactor);
+    ctx.fillStyle = frameStyle === 'polaroid' ? '#F1F5F9' : 'rgba(2, 6, 23, 0.95)';
+    if (frameStyle !== 'full-bleed') {
+      ctx.shadowColor = `${imgAccent}55`;
+      ctx.shadowBlur = 22 * scaleFactor;
+    }
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    if (frameStyle !== 'full-bleed' && frameStyle !== 'polaroid') {
+      ctx.strokeStyle = `${imgAccent}99`;
+      ctx.lineWidth = 1.6 * scaleFactor;
+      ctx.stroke();
+    }
+
+    if (frameStyle === 'browser') {
+      ctx.save();
+      roundRect(ctx, x, y, w, headerH + 6 * scaleFactor, 14 * scaleFactor);
+      ctx.clip();
+      ctx.fillStyle = '#0F172A';
+      ctx.fillRect(x, y, w, headerH);
+      ctx.restore();
+      const dots = ['#F43F5E', '#FBBF24', '#34D399'];
+      dots.forEach((col, i) => {
+        ctx.beginPath();
+        ctx.arc(x + (12 + i * 11) * scaleFactor, y + headerH / 2, 3 * scaleFactor, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+      });
+      ctx.font = `600 ${Math.round(9.5 * scaleFactor)}px "Fira Code", monospace`;
+      ctx.fillStyle = '#94A3B8';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText((el.title || 'showcase.png').slice(0, 32), 0, y + headerH / 2);
+    }
+
+    const imgX = x + padFrame;
+    const imgY = y + padFrame + headerH;
+    const imgW = w - padFrame * 2;
+    const imgH = h - padFrame * 2 - headerH - footerH;
+
+    ctx.save();
+    roundRect(ctx, imgX, imgY, imgW, imgH, (frameStyle === 'full-bleed' ? 10 : 8) * scaleFactor);
+    ctx.clip();
+    ctx.fillStyle = '#090D16';
+    ctx.fillRect(imgX, imgY, imgW, imgH);
+    if (img) {
+      drawFittedImage(ctx, img, imgX, imgY, imgW, imgH, fitMode, motionEffect, intensity, sceneProgress);
+    } else {
+      ctx.fillStyle = '#64748B';
+      ctx.font = `600 ${Math.round(11 * scaleFactor)}px "Fira Code", monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(el.title || 'IMAGE FRAME', 0, imgY + imgH / 2);
+    }
+    ctx.restore();
+
+    if (footerH > 0) {
+      ctx.textBaseline = 'middle';
+      if (frameStyle === 'polaroid') {
+        ctx.fillStyle = '#1E293B';
+        ctx.font = `700 ${Math.round(10.5 * scaleFactor)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText((el.title || el.subtitle || 'Snapshot').slice(0, 36), 0, y + h - footerH / 2);
+      } else {
+        ctx.fillStyle = '#F8FAFC';
+        ctx.font = `700 ${Math.round(10 * scaleFactor)}px "Fira Code", monospace`;
+        ctx.textAlign = 'left';
+        ctx.fillText((el.title || '').slice(0, 26), x + 12 * scaleFactor, y + h - footerH / 2 - 2 * scaleFactor);
+        if (el.subtitle) {
+          ctx.fillStyle = '#67E8F9';
+          ctx.font = `500 ${Math.round(9 * scaleFactor)}px "Fira Code", monospace`;
+          ctx.textAlign = 'right';
+          ctx.fillText(el.subtitle.slice(0, 24), x + w - 12 * scaleFactor, y + h - footerH / 2 - 2 * scaleFactor);
+        }
+      }
+    }
+
     ctx.restore();
     return;
   }
@@ -1085,6 +1272,9 @@ export async function renderProjectToVideo(
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D context is not available in this browser.');
 
+  // Preload all uploaded/remote images referenced by image-frame nodes
+  const imageMap = await preloadProjectImages(project);
+
   // Pick best supported MediaRecorder MIME type
   const candidates = [
     'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
@@ -1225,7 +1415,7 @@ export async function renderProjectToVideo(
 
       // Elements
       scene.elements.forEach((el) => {
-        drawElement(ctx, el, width, height, sceneProg, timeSec, scaleFactor);
+        drawElement(ctx, el, width, height, sceneProg, timeSec, scaleFactor, imageMap);
       });
 
       ctx.restore();

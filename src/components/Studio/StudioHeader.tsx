@@ -15,6 +15,7 @@ import {
   Wand2,
   RotateCcw,
   Upload,
+  ImagePlus,
 } from 'lucide-react';
 
 export const StudioHeader: React.FC = () => {
@@ -31,6 +32,7 @@ export const StudioHeader: React.FC = () => {
     toggleVoiceEnabled,
     setIsExportModalOpen,
     setIsScriptModalOpen,
+    setIsImageAnimatorOpen,
   } = useVideoStudio();
 
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
@@ -126,13 +128,21 @@ export const StudioHeader: React.FC = () => {
           )}
         </div>
 
-        {/* Script-to-Video Button */}
+        {/* Script-to-Video & Images-to-Video Buttons */}
         <button
           onClick={() => setIsScriptModalOpen(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/35 text-xs font-semibold text-indigo-300 border border-indigo-500/40 transition-colors whitespace-nowrap shrink-0"
         >
           <Wand2 className="w-3.5 h-3.5" />
           <span>Script to Video</span>
+        </button>
+
+        <button
+          onClick={() => setIsImageAnimatorOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/35 text-xs font-semibold text-cyan-300 border border-cyan-500/40 transition-colors whitespace-nowrap shrink-0"
+        >
+          <ImagePlus className="w-3.5 h-3.5" />
+          <span>Images to Video</span>
         </button>
       </div>
 

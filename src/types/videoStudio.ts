@@ -31,10 +31,33 @@ export type ElementType =
   | 'auth-token'
   | 'access-policy'
   | 'siem-audit'
-  // Annotations & Custom Blocks
+  // Annotations, Media & Custom Blocks
   | 'callout-card'
   | 'metric-badge'
-  | 'custom-card';
+  | 'custom-card'
+  | 'image-frame';
+
+export type ImageMotionEffect =
+  | 'ken-burns-in'
+  | 'ken-burns-out'
+  | 'pan-left'
+  | 'pan-right'
+  | 'float-3d'
+  | 'reveal-wipe'
+  | 'pulse-beat'
+  | 'none';
+
+export type ImageFrameStyle = 'full-bleed' | 'glass-card' | 'browser' | 'minimal' | 'polaroid';
+
+export interface ImageFrameConfig {
+  src: string;
+  motionEffect: ImageMotionEffect;
+  frameStyle: ImageFrameStyle;
+  fitMode: 'cover' | 'contain';
+  intensity?: number; // 0.5 to 2.0
+  accentColor?: string;
+  badgeText?: string;
+}
 
 export interface CustomBlockConfig {
   icon: string;

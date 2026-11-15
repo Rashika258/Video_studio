@@ -10,11 +10,27 @@ import {
   SceneTransition,
   SceneHeadline,
   CustomBlockPreset,
+  ImageMotionEffect,
+  ImageFrameStyle,
 } from '../types/videoStudio';
 import { IAM_ECOSYSTEM_PROJECT, ALL_TEMPLATES } from '../data/studioTemplates';
 import { generateStudioProjectFromScript, VideoStylePreset } from '../utils/studioGenerator';
 import { sfx } from '../utils/sfx';
 import { voiceover } from '../utils/voiceover';
+
+export interface ImageStoryboardSlide {
+  id: string;
+  src: string;
+  title: string;
+  subtitle?: string;
+  narration: string;
+  duration: number;
+  motionEffect: ImageMotionEffect;
+  frameStyle: ImageFrameStyle;
+  fitMode: 'cover' | 'contain';
+  transition: SceneTransition;
+  accentColor?: string;
+}
 
 interface StudioContextType {
   project: StudioProject;
@@ -27,6 +43,7 @@ interface StudioContextType {
   isExportModalOpen: boolean;
   isScriptModalOpen: boolean;
   isCustomBuilderOpen: boolean;
+  isImageAnimatorOpen: boolean;
   isSidebarOpen: boolean;
   snapToGrid: boolean;
   isConnectMode: boolean;
@@ -37,6 +54,7 @@ interface StudioContextType {
   setIsExportModalOpen: (open: boolean) => void;
   setIsScriptModalOpen: (open: boolean) => void;
   setIsCustomBuilderOpen: (open: boolean) => void;
+  setIsImageAnimatorOpen: (open: boolean) => void;
   setIsSidebarOpen: (open: boolean) => void;
   setSnapToGrid: (snap: boolean) => void;
   setIsConnectMode: (active: boolean) => void;
@@ -65,8 +83,22 @@ interface StudioContextType {
   createBlankProject: () => void;
   importProjectJson: (jsonText: string) => boolean;
 
-  // Element & Custom Block Actions
+  // Element, Image & Custom Block Actions
   addElement: (type: ElementType) => void;
+  addImageElement: (opts: {
+    src: string;
+    title?: string;
+    subtitle?: string;
+    motionEffect?: ImageMotionEffect;
+    frameStyle?: ImageFrameStyle;
+    fitMode?: 'cover' | 'contain';
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    accentColor?: string;
+  }) => void;
+  createVideoFromImages: (slides: ImageStoryboardSlide[], projectTitle?: string) => void;
   addCustomElement: (preset: Omit<CustomBlockPreset, 'id'> & { x?: number; y?: number; entranceBeat?: number }) => void;
   saveCustomBlock: (preset: Omit<CustomBlockPreset, 'id'>) => void;
   deleteCustomBlock: (id: string) => void;
@@ -114,6 +146,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isScriptModalOpen, setIsScriptModalOpen] = useState<boolean>(false);
   const [isCustomBuilderOpen, setIsCustomBuilderOpen] = useState<boolean>(false);
+  const [isImageAnimatorOpen, setIsImageAnimatorOpen] = useState<boolean>(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [snapToGrid, setSnapToGrid] = useState<boolean>(true);
   const [isConnectMode, setIsConnectMode] = useState<boolean>(false);
@@ -421,8 +454,13 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       subtitle: 'Configured component',
       x: 32 + Math.random() * 36,
       y: 38 + Math.random() * 28,
-      width: type.includes('tree') || type.includes('chart') || type.includes('brain') || type.includes('desk') ? 280 : 220,
-      height: 150,
+      width:
+        type === 'image-frame'
+          ? 340
+          : type.includes('tree') || type.includes('chart') || type.includes('brain') || type.includes('desk')
+          ? 280
+          : 220,
+      height: type === 'image-frame' ? 210 : 150,
       status: 'normal',
       animation: 'none',
       entranceBeat: 0,
@@ -436,6 +474,16 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               gaugeValue: 82,
               gaugeLabel: 'Throughput',
               rows: ['Region: global-edge', 'Latency: 4.2ms'],
+            }
+          : type === 'image-frame'
+          ? {
+              src: '',
+              motionEffect: 'ken-burns-in',
+              frameStyle: 'glass-card',
+              fitMode: 'cover',
+              intensity: 1.0,
+              accentColor: '#38BDF8',
+              badgeText: 'IMAGE',
             }
           : undefined,
     };
@@ -451,6 +499,155 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     setActiveElementId(newEl.id);
     sfx.playKeyboardType();
+  };
+
+  const addImageElement = (opts: {
+    src: string;
+    title?: string;
+    subtitle?: string;
+    motionEffect?: ImageMotionEffect;
+    frameStyle?: ImageFrameStyle;
+    fitMode?: 'cover' | 'contain';
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    accentColor?: string;
+  }) => {
+    const newEl: StudioElement = {
+      id: `el-img-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      type: 'image-frame',
+      title: opts.title || 'Animated Image',
+      subtitle: opts.subtitle || '',
+      x: opts.x ?? 50,
+      y: opts.y ?? 52,
+      width: opts.width ?? 360,
+      height: opts.height ?? 225,
+      status: 'active',
+      animation: opts.motionEffect === 'float-3d' ? 'float' : 'none',
+      entranceBeat: 0,
+      customProps: {
+        src: opts.src,
+        motionEffect: opts.motionEffect || 'ken-burns-in',
+        frameStyle: opts.frameStyle || 'glass-card',
+        fitMode: opts.fitMode || 'cover',
+        intensity: 1.0,
+        accentColor: opts.accentColor || '#38BDF8',
+        badgeText: 'MEDIA',
+      },
+    };
+
+    setProject((prev) => {
+      const updatedScenes = [...prev.scenes];
+      updatedScenes[activeSceneIndex] = {
+        ...updatedScenes[activeSceneIndex],
+        elements: [...updatedScenes[activeSceneIndex].elements, newEl],
+      };
+      return { ...prev, scenes: updatedScenes };
+    });
+
+    setActiveElementId(newEl.id);
+    sfx.playSuccess();
+  };
+
+  const createVideoFromImages = (slides: ImageStoryboardSlide[], projectTitle?: string) => {
+    if (!slides || slides.length === 0) return;
+    stopPlayback();
+    setIsScrubbing(false);
+
+    const isVertical = project.aspectRatio === '9:16';
+    const stageW = isVertical ? 340 : 660;
+    const stageH = isVertical ? 440 : 372;
+
+    const generatedScenes: StudioScene[] = slides.map((slide, idx) => {
+      const accent = slide.accentColor || (idx % 2 === 0 ? '#06B6D4' : '#6366F1');
+      const isFullBleed = slide.frameStyle === 'full-bleed';
+      const camZoomEnd =
+        slide.motionEffect === 'ken-burns-in'
+          ? 1.08
+          : slide.motionEffect === 'ken-burns-out'
+          ? 1.0
+          : 1.04;
+      const camZoomStart =
+        slide.motionEffect === 'ken-burns-out' ? 1.08 : 1.0;
+
+      return {
+        id: `scene-img-${Date.now()}-${idx}`,
+        title: slide.title || `Slide ${idx + 1}`,
+        duration: Math.max(2.0, slide.duration || 4.5),
+        narration: slide.narration || '',
+        headline: slide.title
+          ? {
+              text: slide.title,
+              subtext: slide.subtitle || '',
+              color: '#F8FAFC',
+            }
+          : undefined,
+        transition: slide.transition || 'fade',
+        camera: {
+          focus: slide.motionEffect === 'pan-right' ? 'pan-right' : slide.motionEffect === 'pan-left' ? 'pan-left' : 'zoom-in',
+          zoom: camZoomEnd,
+          panX: slide.motionEffect === 'pan-right' ? 2 : slide.motionEffect === 'pan-left' ? -2 : 0,
+          panY: 0,
+          startZoom: camZoomStart,
+          startPanX: slide.motionEffect === 'pan-right' ? -2 : slide.motionEffect === 'pan-left' ? 2 : 0,
+          startPanY: 0,
+        },
+        background: {
+          theme: 'deep-space',
+          grid: !isFullBleed,
+          ambientGlow: accent,
+        },
+        hud: {
+          show: false,
+        },
+        elements: [
+          {
+            id: `el-slide-${Date.now()}-${idx}`,
+            type: 'image-frame',
+            title: slide.title || `Image ${idx + 1}`,
+            subtitle: slide.subtitle || '',
+            x: 50,
+            y: isFullBleed ? 50 : slide.title ? 56 : 50,
+            width: isFullBleed ? (isVertical ? 410 : 960) : stageW,
+            height: isFullBleed ? (isVertical ? 730 : 540) : stageH,
+            status: 'active',
+            animation: slide.motionEffect === 'float-3d' ? 'float' : 'none',
+            entranceBeat: 0,
+            customProps: {
+              src: slide.src,
+              motionEffect: slide.motionEffect,
+              frameStyle: slide.frameStyle,
+              fitMode: slide.fitMode,
+              intensity: 1.15,
+              accentColor: accent,
+              badgeText: `0${idx + 1}`,
+            },
+          },
+        ],
+        pipes: [],
+      };
+    });
+
+    const nextProj: StudioProject = {
+      ...project,
+      title: projectTitle?.trim() || 'Animated Image Showcase',
+      scenes: generatedScenes,
+    };
+
+    projectRef.current = nextProj;
+    setProject(nextProj);
+    setActiveSceneIndexState(0);
+    setActiveElementId(null);
+    setPlaybackProgress(0);
+    setIsImageAnimatorOpen(false);
+    sfx.playSuccess();
+
+    setTimeout(() => {
+      isPlayingRef.current = true;
+      setIsPlaying(true);
+      playCurrentScene(0);
+    }, 150);
   };
 
   const addCustomElement = (preset: Omit<CustomBlockPreset, 'id'> & { x?: number; y?: number; entranceBeat?: number }) => {
@@ -765,6 +962,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         isExportModalOpen,
         isScriptModalOpen,
         isCustomBuilderOpen,
+        isImageAnimatorOpen,
         isSidebarOpen,
         snapToGrid,
         isConnectMode,
@@ -773,6 +971,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setIsExportModalOpen,
         setIsScriptModalOpen,
         setIsCustomBuilderOpen,
+        setIsImageAnimatorOpen,
         setIsSidebarOpen,
         setSnapToGrid,
         setIsConnectMode,
@@ -795,6 +994,8 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         createBlankProject,
         importProjectJson,
         addElement,
+        addImageElement,
+        createVideoFromImages,
         addCustomElement,
         saveCustomBlock,
         deleteCustomBlock,

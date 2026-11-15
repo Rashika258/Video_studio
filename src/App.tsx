@@ -10,6 +10,7 @@ import { StudioTimeline } from './components/Studio/StudioTimeline';
 import { ExportModal } from './components/Studio/ExportModal';
 import { ScriptToVideoModal } from './components/Studio/ScriptToVideoModal';
 import { StudioCustomBuilderModal } from './components/Studio/StudioCustomBuilderModal';
+import { StudioImageAnimatorModal } from './components/Studio/StudioImageAnimatorModal';
 
 export const VisualMotionApp: React.FC = () => {
   return (
@@ -29,7 +30,8 @@ export const VisualMotionApp: React.FC = () => {
       {/* 3. Bottom Multi-Scene Timeline */}
       <StudioTimeline />
 
-      {/* 4. Custom Block Builder, Script-to-Video & Real Video Export Modals */}
+      {/* 4. Image Animator, Custom Block Builder, Script-to-Video & Real Video Export Modals */}
+      <StudioImageAnimatorModal />
       <StudioCustomBuilderModal />
       <ScriptToVideoModal />
       <ExportModal />

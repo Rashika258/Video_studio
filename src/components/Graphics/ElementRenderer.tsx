@@ -47,6 +47,7 @@ import {
   Box,
   Workflow,
   Sparkles,
+  Image as LucideImage,
 } from 'lucide-react';
 
 const CUSTOM_ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
@@ -594,6 +595,134 @@ export const ElementRenderer: React.FC<ElementRendererProps> = ({
             {subtitle && (
               <div className="text-[9px] font-mono text-slate-400 border-t border-slate-800 pt-1 text-center truncate">
                 {subtitle}
+              </div>
+            )}
+          </div>
+        );
+      }
+      case 'image-frame': {
+        const cfg = customProps || {};
+        const src: string = cfg.src || '';
+        const motionEffect: string = cfg.motionEffect || 'ken-burns-in';
+        const frameStyle: string = cfg.frameStyle || 'glass-card';
+        const fitMode: 'cover' | 'contain' = cfg.fitMode === 'contain' ? 'contain' : 'cover';
+        const intensity: number = typeof cfg.intensity === 'number' ? cfg.intensity : 1.0;
+        const accentColor: string = isCrashed ? '#EF4444' : isWarning ? '#F59E0B' : cfg.accentColor || '#38BDF8';
+        const t = isPlaying ? playbackProgress : 0;
+
+        let imgScale = 1;
+        let imgTx = 0;
+        let imgTy = 0;
+        let imgRotate = 0;
+        let clipRightPct = 0;
+
+        if (motionEffect === 'ken-burns-in') {
+          imgScale = 1 + 0.16 * intensity * t;
+        } else if (motionEffect === 'ken-burns-out') {
+          imgScale = 1 + 0.16 * intensity * (1 - t);
+        } else if (motionEffect === 'pan-left') {
+          imgScale = 1.16 * Math.max(1, intensity * 0.92);
+          imgTx = 5 * intensity * (1 - 2 * t);
+        } else if (motionEffect === 'pan-right') {
+          imgScale = 1.16 * Math.max(1, intensity * 0.92);
+          imgTx = -5 * intensity * (1 - 2 * t);
+        } else if (motionEffect === 'float-3d') {
+          imgScale = 1.05;
+          imgTy = Math.sin(t * Math.PI * 2) * 2.5 * intensity;
+          imgRotate = Math.sin(t * Math.PI * 2) * 1.2 * intensity;
+        } else if (motionEffect === 'reveal-wipe') {
+          const wipe = Math.min(1, t / 0.35);
+          clipRightPct = isPlaying ? Math.max(0, (1 - wipe) * 100) : 0;
+          imgScale = 1 + 0.06 * t;
+        } else if (motionEffect === 'pulse-beat') {
+          imgScale = 1 + Math.abs(Math.sin(t * Math.PI * 4)) * 0.07 * intensity;
+        }
+
+        const imageContent = src ? (
+          <img
+            src={src}
+            alt={title || 'Animated frame'}
+            referrerPolicy="no-referrer"
+            draggable={false}
+            className="w-full h-full select-none pointer-events-none"
+            style={{
+              objectFit: fitMode,
+              transform: `scale(${imgScale}) translate(${imgTx}%, ${imgTy}%) rotate(${imgRotate}deg)`,
+              clipPath: clipRightPct > 0 ? `inset(0 ${clipRightPct}% 0 0)` : undefined,
+              transition: isPlaying ? 'none' : 'transform 0.25s ease-out',
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900/90 text-slate-400 gap-1.5 p-3 text-center">
+            <LucideImage className="w-7 h-7 text-cyan-400/80" />
+            <span className="text-[11px] font-bold text-slate-200">Drop or Upload Image</span>
+            <span className="text-[9px] font-mono text-slate-500">Use Inspector or Images-to-Video</span>
+          </div>
+        );
+
+        if (frameStyle === 'full-bleed') {
+          return (
+            <div className="w-full h-full rounded-xl overflow-hidden bg-slate-950 relative shadow-2xl">
+              {imageContent}
+            </div>
+          );
+        }
+
+        if (frameStyle === 'browser') {
+          return (
+            <div
+              className="w-full h-full rounded-2xl overflow-hidden bg-slate-950 border flex flex-col shadow-2xl"
+              style={{ borderColor: `${accentColor}90`, boxShadow: `0 0 24px -4px ${accentColor}40` }}
+            >
+              <div className="h-6 px-2.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500/80" />
+                  <span className="w-2 h-2 rounded-full bg-amber-400/80" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-400/80" />
+                </div>
+                <span className="text-[9px] font-mono text-slate-400 truncate max-w-[65%]">
+                  {title || 'showcase.png'}
+                </span>
+                <span className="text-[8px] font-mono text-cyan-400 uppercase">{motionEffect.replace('-', ' ')}</span>
+              </div>
+              <div className="flex-1 overflow-hidden relative bg-slate-950">{imageContent}</div>
+            </div>
+          );
+        }
+
+        if (frameStyle === 'polaroid') {
+          return (
+            <div className="w-full h-full p-2.5 pb-6 rounded-xl bg-slate-100 text-slate-900 shadow-2xl flex flex-col">
+              <div className="flex-1 overflow-hidden rounded-lg bg-slate-900 relative">{imageContent}</div>
+              <div className="pt-1.5 text-center text-[10px] font-bold text-slate-800 truncate">
+                {title || subtitle || 'Snapshot'}
+              </div>
+            </div>
+          );
+        }
+
+        if (frameStyle === 'minimal') {
+          return (
+            <div
+              className="w-full h-full rounded-2xl overflow-hidden bg-slate-950 border-2 shadow-2xl relative"
+              style={{ borderColor: `${accentColor}99`, boxShadow: `0 0 24px -4px ${accentColor}45` }}
+            >
+              {imageContent}
+            </div>
+          );
+        }
+
+        // Default: 'glass-card'
+        return (
+          <div
+            className="w-full h-full p-2 rounded-2xl bg-slate-950/90 border flex flex-col gap-1.5 shadow-2xl"
+            style={{ borderColor: `${accentColor}99`, boxShadow: `0 0 24px -4px ${accentColor}45` }}
+          >
+            <div className="flex-1 rounded-xl overflow-hidden bg-slate-900 relative">{imageContent}</div>
+            {(title || subtitle) && (
+              <div className="px-1.5 pb-0.5 flex items-center justify-between gap-2 shrink-0">
+                <span className="text-[10px] font-mono font-bold text-white truncate">{title}</span>
+                {subtitle && <span className="text-[9px] font-mono text-cyan-300 truncate">{subtitle}</span>}
               </div>
             )}
           </div>

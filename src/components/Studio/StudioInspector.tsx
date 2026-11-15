@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useVideoStudio } from '../../store/videoStudioStore';
 import { ElementStatus, ElementType, StudioElement, StudioPipe } from '../../types/videoStudio';
-import { Sliders, Trash2, Zap, X } from 'lucide-react';
+import { Sliders, Trash2, Zap, X, Upload, Maximize2 } from 'lucide-react';
 
 const ELEMENT_TYPE_OPTIONS: Array<{ value: ElementType; label: string }> = [
   { value: 'server-blade', label: 'Server Blade' },
@@ -34,6 +34,7 @@ const ELEMENT_TYPE_OPTIONS: Array<{ value: ElementType; label: string }> = [
   { value: 'callout-card', label: 'Callout Card' },
   { value: 'kinetic-title', label: 'Kinetic Title Card' },
   { value: 'custom-card', label: 'Custom Block' },
+  { value: 'image-frame', label: 'Animated Image Frame' },
 ];
 
 const PIPE_COLOR_SWATCHES = ['#06B6D4', '#10B981', '#818CF8', '#F59E0B', '#EF4444'];
@@ -41,6 +42,7 @@ const CUSTOM_ACCENT_SWATCHES = ['#06B6D4', '#6366F1', '#10B981', '#F59E0B', '#EF
 
 export const StudioInspector: React.FC = () => {
   const {
+    project,
     activeScene,
     activeElementId,
     setActiveElementId,
@@ -51,6 +53,8 @@ export const StudioInspector: React.FC = () => {
     updatePipe,
     removePipe,
   } = useVideoStudio();
+
+  const imgUploadRef = useRef<HTMLInputElement>(null);
 
   if (!activeElementId) return null;
 
@@ -253,6 +257,153 @@ export const StudioInspector: React.FC = () => {
           </div>
         )}
 
+        {element.type === 'image-frame' && (
+          <div className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono text-cyan-400 font-bold">IMAGE ANIMATOR</span>
+              <button
+                type="button"
+                onClick={() => imgUploadRef.current?.click()}
+                className="px-2 py-0.5 rounded bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-[10px] font-mono text-cyan-300 flex items-center gap-1"
+              >
+                <Upload className="w-3 h-3" />
+                <span>Upload Image</span>
+              </button>
+              <input
+                ref={imgUploadRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    updateElement(element.id, {
+                      customProps: { ...customCfg, src: String(reader.result || '') },
+                    });
+                  };
+                  reader.readAsDataURL(file);
+                  e.target.value = '';
+                }}
+                className="hidden"
+              />
+            </div>
+
+            <div>
+              <label className="text-[9px] font-mono text-slate-400 block mb-1">IMAGE URL</label>
+              <input
+                type="text"
+                value={customCfg.src?.startsWith('data:') ? '(Uploaded Local Image)' : customCfg.src || ''}
+                onChange={(e) => {
+                  if (e.target.value === '(Uploaded Local Image)') return;
+                  updateElement(element.id, {
+                    customProps: { ...customCfg, src: e.target.value },
+                  });
+                }}
+                placeholder="https://... or click Upload Image"
+                className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-mono text-slate-200 focus:outline-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              <div>
+                <label className="text-[9px] font-mono text-slate-400 block mb-1">MOTION</label>
+                <select
+                  value={customCfg.motionEffect || 'ken-burns-in'}
+                  onChange={(e) =>
+                    updateElement(element.id, {
+                      customProps: { ...customCfg, motionEffect: e.target.value },
+                    })
+                  }
+                  className="w-full px-1.5 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-mono text-cyan-300 focus:outline-none"
+                >
+                  <option value="ken-burns-in">Ken Burns In</option>
+                  <option value="ken-burns-out">Ken Burns Out</option>
+                  <option value="pan-left">Pan Left</option>
+                  <option value="pan-right">Pan Right</option>
+                  <option value="reveal-wipe">Reveal Wipe</option>
+                  <option value="float-3d">3D Float</option>
+                  <option value="pulse-beat">Pulse Beat</option>
+                  <option value="none">Static</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[9px] font-mono text-slate-400 block mb-1">FRAME STYLE</label>
+                <select
+                  value={customCfg.frameStyle || 'glass-card'}
+                  onChange={(e) =>
+                    updateElement(element.id, {
+                      customProps: { ...customCfg, frameStyle: e.target.value },
+                    })
+                  }
+                  className="w-full px-1.5 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-mono text-slate-200 focus:outline-none"
+                >
+                  <option value="glass-card">Studio Card</option>
+                  <option value="full-bleed">Full-Bleed</option>
+                  <option value="browser">Browser</option>
+                  <option value="minimal">Minimal</option>
+                  <option value="polaroid">Polaroid</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5 items-end">
+              <div>
+                <label className="text-[9px] font-mono text-slate-400 block mb-1">FIT MODE</label>
+                <select
+                  value={customCfg.fitMode || 'cover'}
+                  onChange={(e) =>
+                    updateElement(element.id, {
+                      customProps: { ...customCfg, fitMode: e.target.value },
+                    })
+                  }
+                  className="w-full px-1.5 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] font-mono text-slate-200 focus:outline-none"
+                >
+                  <option value="cover">Cover Fill</option>
+                  <option value="contain">Contain Fit</option>
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const isVert = project.aspectRatio === '9:16';
+                  updateElement(element.id, {
+                    x: 50,
+                    y: 50,
+                    width: isVert ? 410 : 960,
+                    height: isVert ? 730 : 540,
+                    customProps: { ...customCfg, frameStyle: 'full-bleed' },
+                  });
+                }}
+                className="py-1 px-2 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-200 flex items-center justify-center gap-1 whitespace-nowrap"
+              >
+                <Maximize2 className="w-3 h-3 text-cyan-400" />
+                <span>Full Stage</span>
+              </button>
+            </div>
+
+            <div className="tabular-nums">
+              <div className="flex justify-between text-[9px] font-mono text-slate-400 mb-1">
+                <span>MOTION INTENSITY</span>
+                <span className="text-cyan-300 font-bold">{(customCfg.intensity ?? 1.0).toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                min={0.4}
+                max={2.0}
+                step={0.1}
+                value={customCfg.intensity ?? 1.0}
+                onChange={(e) =>
+                  updateElement(element.id, {
+                    customProps: { ...customCfg, intensity: parseFloat(e.target.value) },
+                  })
+                }
+                className="w-full accent-cyan-400 cursor-pointer"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Status State */}
         <div>
           <label className="text-[10px] font-mono text-slate-400 font-bold block mb-1">
@@ -354,7 +505,7 @@ export const StudioInspector: React.FC = () => {
             <input
               type="range"
               min="150"
-              max="380"
+              max={element.type === 'image-frame' ? 960 : 380}
               step="5"
               value={element.width}
               onChange={(e) => updateElement(element.id, { width: parseFloat(e.target.value) })}
@@ -370,7 +521,7 @@ export const StudioInspector: React.FC = () => {
             <input
               type="range"
               min="110"
-              max="240"
+              max={element.type === 'image-frame' ? 740 : 240}
               step="5"
               value={element.height}
               onChange={(e) => updateElement(element.id, { height: parseFloat(e.target.value) })}
