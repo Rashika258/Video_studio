@@ -21,6 +21,16 @@ export type ElementType =
   | 'brain-dopamine'
   | 'habit-loop'
   | 'split-comparison'
+  // AI Agents, Silicon & ByteMonk Documentary
+  | 'agent-swarm'
+  | 'systolic-array'
+  | 'sandbox-container'
+  | 'kinetic-title'
+  // IAM & Security Ecosystem (Cloud X Berry)
+  | 'identity-idp'
+  | 'auth-token'
+  | 'access-policy'
+  | 'siem-audit'
   // Annotations
   | 'callout-card'
   | 'metric-badge';
@@ -38,6 +48,7 @@ export interface StudioElement {
   height: number;
   status: ElementStatus;
   animation?: 'none' | 'pulse' | 'glow' | 'float' | 'overload-shake' | 'sparkle';
+  entranceBeat?: number; // 0 to 0.8 normalized scene time when element pops in
   customProps?: Record<string, any>;
 }
 
@@ -50,9 +61,10 @@ export interface StudioPipe {
   packetColor?: string;
   status: 'normal' | 'heavy' | 'crashed' | 'error';
   style?: 'curved' | 'orthogonal' | 'straight';
+  drawBeat?: number; // 0 to 0.7 normalized scene time when trim-path draws
 }
 
-export type CameraFocus = 'overview' | 'left' | 'center' | 'right' | 'zoom-in' | 'shake';
+export type CameraFocus = 'overview' | 'left' | 'center' | 'right' | 'zoom-in' | 'shake' | 'pan-right' | 'pan-left';
 
 export type BackgroundTheme =
   | 'dark-blueprint'
@@ -61,6 +73,8 @@ export type BackgroundTheme =
   | 'psychology-split'
   | 'deep-space'
   | 'matrix-code';
+
+export type SceneTransition = 'fade' | 'zoom' | 'slide' | 'cut';
 
 export interface SceneHUD {
   show: boolean;
@@ -71,16 +85,27 @@ export interface SceneHUD {
   statusColor?: string;
 }
 
+export interface SceneHeadline {
+  text: string;
+  subtext?: string;
+  color?: string;
+}
+
 export interface StudioScene {
   id: string;
   title: string;
   duration: number; // seconds (e.g. 4.0)
   narration: string; // voiceover text & auto subtitles
+  headline?: SceneHeadline;
+  transition?: SceneTransition;
   camera: {
     focus: CameraFocus;
     zoom: number; // 1.0 = normal, 1.3 = medium zoom, 1.8 = tight focus
     panX: number; // offset percent
     panY: number;
+    startZoom?: number;
+    startPanX?: number;
+    startPanY?: number;
   };
   background: {
     theme: BackgroundTheme;

@@ -8,6 +8,7 @@ import { StudioCanvas } from './components/Studio/StudioCanvas';
 import { StudioInspector } from './components/Studio/StudioInspector';
 import { StudioTimeline } from './components/Studio/StudioTimeline';
 import { ExportModal } from './components/Studio/ExportModal';
+import { ScriptToVideoModal } from './components/Studio/ScriptToVideoModal';
 
 export const VisualMotionApp: React.FC = () => {
   return (
@@ -27,7 +28,8 @@ export const VisualMotionApp: React.FC = () => {
       {/* 3. Bottom Multi-Scene Timeline */}
       <StudioTimeline />
 
-      {/* 4. Video Render & Export Modal */}
+      {/* 4. Script-to-Video & Real Video Export Modals */}
+      <ScriptToVideoModal />
       <ExportModal />
     </div>
   );

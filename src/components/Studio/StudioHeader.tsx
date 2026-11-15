@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useVideoStudio } from '../../store/videoStudioStore';
 import { ALL_TEMPLATES } from '../../data/studioTemplates';
 import {
@@ -6,12 +6,15 @@ import {
   Pause,
   Download,
   Sparkles,
-  Layers,
   FilePlus,
   Volume2,
+  VolumeX,
   Monitor,
   Smartphone,
   ChevronDown,
+  Wand2,
+  RotateCcw,
+  Upload,
 } from 'lucide-react';
 
 export const StudioHeader: React.FC = () => {
@@ -19,41 +22,55 @@ export const StudioHeader: React.FC = () => {
     project,
     isPlaying,
     togglePlay,
+    playFromStart,
     loadTemplate,
     createBlankProject,
-    startExport,
-    isExporting,
-    exportProgress,
+    importProjectJson,
+    updateProjectTitle,
+    setAspectRatio,
+    toggleVoiceEnabled,
+    setIsExportModalOpen,
+    setIsScriptModalOpen,
   } = useVideoStudio();
 
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    importProjectJson(text);
+    setShowTemplateMenu(false);
+    e.target.value = '';
+  };
 
   return (
-    <header className="h-14 bg-[#090D16] border-b border-slate-800/80 px-4 flex items-center justify-between select-none z-30">
-      {/* Brand & Project Title */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 font-mono font-black text-white text-base">
+    <header className="h-14 bg-[#090D16] border-b border-slate-800/80 px-4 flex items-center justify-between gap-4 select-none z-30 shrink-0">
+      {/* Left: Brand, Editable Title, Templates & Script Builder */}
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center font-mono font-black text-white text-sm">
             VM
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-sm text-white tracking-wide">VisualMotion</span>
-              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold">
-                STUDIO 60FPS
-              </span>
-            </div>
-            <div className="text-[10px] text-slate-400 font-mono truncate max-w-[220px]">
-              {project.title}
-            </div>
-          </div>
+          <span className="font-extrabold text-sm text-white tracking-tight whitespace-nowrap">
+            VisualMotion
+          </span>
         </div>
 
-        {/* Templates Dropdown Button */}
-        <div className="relative">
+        <input
+          type="text"
+          value={project.title}
+          onChange={(e) => updateProjectTitle(e.target.value)}
+          aria-label="Project title"
+          className="hidden lg:block w-52 px-2.5 py-1 rounded-md bg-slate-900/70 border border-slate-800 hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-xs text-slate-200 font-medium truncate"
+        />
+
+        {/* Templates Dropdown */}
+        <div className="relative shrink-0">
           <button
             onClick={() => setShowTemplateMenu(!showTemplateMenu)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition-colors whitespace-nowrap"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span>Templates</span>
@@ -63,7 +80,7 @@ export const StudioHeader: React.FC = () => {
           {showTemplateMenu && (
             <div className="absolute top-full left-0 mt-1.5 w-80 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-2 z-50">
               <div className="px-3 py-1.5 text-[10px] font-mono uppercase text-slate-400 font-bold border-b border-slate-800">
-                YouTube Explainer Presets
+                Sample Reference Videos
               </div>
               {ALL_TEMPLATES.map((tmpl) => (
                 <button
@@ -79,62 +96,113 @@ export const StudioHeader: React.FC = () => {
                 </button>
               ))}
 
-              <div className="p-2 border-t border-slate-800 mt-1">
+              <div className="p-2 border-t border-slate-800 mt-1 grid grid-cols-2 gap-1.5">
                 <button
                   onClick={() => {
                     createBlankProject();
                     setShowTemplateMenu(false);
                   }}
-                  className="w-full text-center py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-medium flex items-center justify-center gap-1.5"
+                  className="text-center py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-medium flex items-center justify-center gap-1.5"
                 >
                   <FilePlus className="w-3.5 h-3.5" />
-                  <span>Start Blank Project</span>
+                  <span>Blank Project</span>
                 </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-center py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-medium flex items-center justify-center gap-1.5"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Import JSON</span>
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  onChange={handleImportFile}
+                  className="hidden"
+                />
               </div>
             </div>
           )}
         </div>
+
+        {/* Script-to-Video Button */}
+        <button
+          onClick={() => setIsScriptModalOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/35 text-xs font-semibold text-indigo-300 border border-indigo-500/40 transition-colors whitespace-nowrap shrink-0"
+        >
+          <Wand2 className="w-3.5 h-3.5" />
+          <span>Script to Video</span>
+        </button>
       </div>
 
-      {/* Center Controls: Play / Pause */}
-      <div className="flex items-center gap-3">
+      {/* Center: Playback Controls & Voice Toggle */}
+      <div className="flex items-center gap-2 shrink-0">
         <button
-          onClick={togglePlay}
-          className={`flex items-center gap-2 px-5 py-2 rounded-xl font-bold text-xs shadow-lg transition-all ${
-            isPlaying
-              ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-amber-500/20'
-              : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30'
-          }`}
+          onClick={playFromStart}
+          title="Play full video from Scene 1"
+          className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors"
         >
-          {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
-          <span>{isPlaying ? 'PAUSE' : 'PLAY PREVIEW'}</span>
+          <RotateCcw className="w-3.5 h-3.5" />
         </button>
 
-        <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/60 text-slate-300 text-xs font-mono">
-          <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
-          <span>TTS Voice On</span>
-        </div>
+        <button
+          onClick={togglePlay}
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg font-bold text-xs transition-colors whitespace-nowrap ${
+            isPlaying
+              ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+              : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+          }`}
+        >
+          {isPlaying ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+          <span>{isPlaying ? 'Pause' : 'Play Video'}</span>
+        </button>
+
+        <button
+          onClick={toggleVoiceEnabled}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-mono transition-colors whitespace-nowrap ${
+            project.audio.voiceEnabled
+              ? 'bg-slate-800/80 border-slate-700 text-cyan-300 hover:bg-slate-800'
+              : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300'
+          }`}
+          title="Toggle voiceover narration during preview"
+        >
+          {project.audio.voiceEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+          <span>{project.audio.voiceEnabled ? 'Voice On' : 'Muted'}</span>
+        </button>
       </div>
 
-      {/* Right Controls: Aspect Ratio & Video Export */}
-      <div className="flex items-center gap-3">
-        <div className="flex bg-slate-800/80 p-0.5 rounded-lg border border-slate-700 text-xs font-mono">
+      {/* Right: Aspect Ratio Switcher & Real Video Export */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-xs font-mono">
           <button
-            className="flex items-center gap-1 px-2 py-1 rounded bg-indigo-600 text-white font-bold"
-            title="16:9 Standard YouTube Landscape"
+            onClick={() => setAspectRatio('16:9')}
+            className={`flex items-center gap-1 px-2 py-1 rounded transition-colors whitespace-nowrap ${
+              project.aspectRatio === '16:9' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+            }`}
+            title="16:9 YouTube Landscape"
           >
             <Monitor className="w-3.5 h-3.5" />
             <span>16:9</span>
           </button>
+          <button
+            onClick={() => setAspectRatio('9:16')}
+            className={`flex items-center gap-1 px-2 py-1 rounded transition-colors whitespace-nowrap ${
+              project.aspectRatio === '9:16' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+            }`}
+            title="9:16 YouTube Shorts / Reels"
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>9:16</span>
+          </button>
         </div>
 
         <button
-          onClick={startExport}
-          disabled={isExporting}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50"
+          onClick={() => setIsExportModalOpen(true)}
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors whitespace-nowrap"
         >
-          <Download className="w-4 h-4" />
-          <span>{isExporting ? `RENDERING ${exportProgress}%` : 'EXPORT 1080p MP4'}</span>
+          <Download className="w-3.5 h-3.5" />
+          <span>Export Video</span>
         </button>
       </div>
     </header>
